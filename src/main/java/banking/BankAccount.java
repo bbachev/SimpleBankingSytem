@@ -1,16 +1,14 @@
 package banking;
 
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
 public class BankAccount implements BankOperations{
     private final String owner;
-    private long balance = 0;
+    protected long balance = 0;
     private ReentrantLock reentrantLock;
 
     public BankAccount(String owner) {
