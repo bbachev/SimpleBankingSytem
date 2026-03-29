@@ -1,12 +1,13 @@
 package banking;
 
+import banking.exception.AccountNotExistException;
+
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 public interface AccountManager {
-    BankAccount openAccount(UUID AccountNumber, String owner, AccountType type);
-    void closeAccount(UUID accountNumber);
-    Optional<BankAccount> findAccount(UUID accountNumber);
+    BankAccount openAccount(String owner, AccountType type, Double interest);
+    void closeAccount(UUID accountNumber) throws AccountNotExistException;
+    BankAccount findAccount(UUID accountNumber) throws AccountNotExistException;
     List<BankAccount> listAccounts();
 }

@@ -1,36 +1,46 @@
 package banking;
 
+import banking.exception.AccountNotExistException;
+
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Bank implements AccountManager {
-    private final ConcurrentHashMap<> accounts;
+    private final ConcurrentHashMap<UUID, BankAccount> accounts;
 
-    public Bank(ConcurrentHashMap accounts) {
+    public Bank(ConcurrentHashMap<UUID, BankAccount> accounts) {
         this.accounts = accounts;
     }
 
     @Override
-    public BankAccount openAccount(UUID accountNumber, String owner, AccountType type) {
-        UUID uuid = UUID.randomUUID();
+    public BankAccount openAccount(String owner, AccountType type, Double interestRate) {
+        UUID id = UUID.randomUUID();
 
-        this.accounts.putIfAbsent()
+        BankAccount bankAccount = switch (type) {
+            case AccountType.REGULAR -> new BankAccount(owner);
+            case AccountType.SAVING -> new SavingAccount(owner, interestRate);
+        };
+        this.accounts.putIfAbsent(id, bankAccount);
+
+        return bankAccount;
     }
 
     @Override
-    public void closeAccount(UUID accountNumber) {
-
+    public void closeAccount(UUID accountNumber) throws AccountNotExistException {
+        this.findAccount(accountNumber);
+        this.accounts.remove(accountNumber);
     }
 
     @Override
-    public Optional<BankAccount> findAccount(UUID accountNumber) {
-        return Optional.empty();
+    public BankAccount findAccount(UUID accountNumber) throws AccountNotExistException {
+        BankAccount bankAccount = this.accounts.get(accountNumber);
+        if (bankAccount == null) throw new AccountNotExistException();
+        return bankAccount;
     }
 
     @Override
     public List<BankAccount> listAccounts() {
-        return List.of();
+        return this.accounts.values().stream().toList();
     }
 }

@@ -7,13 +7,15 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-@AllArgsConstructor
 @Getter
 public class BankAccount implements BankOperations{
-    private final UUID accountNumber;
     private final String owner;
-    private long balance;
+    private long balance = 0;
     private ReentrantLock reentrantLock;
+
+    public BankAccount(String owner) {
+        this.owner = owner;
+    }
 
     @Override
     public void deposit(long amount) {
