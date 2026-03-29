@@ -2,14 +2,18 @@ package banking;
 
 import lombok.Getter;
 
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
-public class BankAccount implements BankOperations{
+public class BankAccount implements BankOperations {
     private final String owner;
     protected long balance = 0;
     private ReentrantLock reentrantLock;
+    private final List<Transaction> transactionHistory = new CopyOnWriteArrayList<>();
 
     public BankAccount(String owner) {
         this.owner = owner;
@@ -22,13 +26,21 @@ public class BankAccount implements BankOperations{
         if (amount < 0) throw new IllegalArgumentException("Amount cannot be negative");
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new RuntimeException("Could not acquire lock");
             this.balance += amount;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             if (isLocked) reentrantLock.unlock();
         }
-
+        transactionHistory.add(
+                new Transaction(OffsetDateTime.now(),
+                        TransactionType.DEPOSIT,
+                        amount,
+                        this,
+                        null,
+                        this.balance)
+        );
     }
 
     @Override
@@ -39,12 +51,22 @@ public class BankAccount implements BankOperations{
         boolean isLocked = false;
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+
             this.balance -= amount;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             if (isLocked) reentrantLock.unlock();
         }
+        transactionHistory.add(
+                new Transaction(OffsetDateTime.now(),
+                        TransactionType.WITHDRAW,
+                        amount,
+                        this,
+                        null,
+                        this.balance)
+        );
     }
 
     @Override
@@ -53,6 +75,7 @@ public class BankAccount implements BankOperations{
 
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new RuntimeException("Could not acquire lock");
             return this.balance;
 
         } catch (InterruptedException e) {
@@ -84,7 +107,8 @@ public class BankAccount implements BankOperations{
             isFirstLocked = firstLock.tryLock(5, TimeUnit.SECONDS);
             isSecondLocked = secondLock.tryLock(5, TimeUnit.SECONDS);
 
-            if (!isFirstLocked || !isSecondLocked) throw new IllegalArgumentException("One of the lock cannot be acquired");
+            if (!isFirstLocked || !isSecondLocked)
+                throw new IllegalArgumentException("One of the lock cannot be acquired");
 
             currentBalance = this.getBalance();
             otherAccountBalance = otherAccount.getBalance();
@@ -107,6 +131,15 @@ public class BankAccount implements BankOperations{
             if (isFirstLocked) firstLock.unlock();
             if (isSecondLocked) secondLock.unlock();
         }
+
+        transactionHistory.add(
+                new Transaction(OffsetDateTime.now(),
+                        TransactionType.DEPOSIT,
+                        amount,
+                        this,
+                        otherAccount,
+                        this.balance)
+        );
     }
 
     public ReentrantLock getLock() {
