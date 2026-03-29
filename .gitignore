@@ -25,6 +25,7 @@ replay_pid*
 
 # IDE files
 .idea/
+target/
 *.iml
 *.ipr
 *.iws
