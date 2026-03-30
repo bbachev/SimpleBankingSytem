@@ -1,9 +1,9 @@
 package banking;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record Transaction (
-        LocalDate timestamp,
+        LocalDateTime timestamp,
         TransactionType type,
         long amount,
         BankAccount fromAccount,

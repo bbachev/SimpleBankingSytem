@@ -5,6 +5,7 @@ import banking.exception.DailyWithdrawalLimitException;
 import banking.exception.OverdraftLimitExceededException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.concurrent.TimeUnit;
 
@@ -35,9 +36,9 @@ public class CheckingAccount extends BankAccount{
             long withdrawalFee = checkForWithdrawalFee() ? this.overdraftFee.amount(): 0;
             doWithdraw(amount, withdrawalFee);
 
-            if(withdrawalFee > 0) {
+            if (withdrawalFee > 0) {
                 getTransactionHistory().add(
-                        new Transaction(OffsetDateTime.now(),
+                        new Transaction(LocalDateTime.now(),
                                 TransactionType.FEE,
                                 this.overdraftFee.amount(),
                                 this,

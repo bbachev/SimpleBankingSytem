@@ -4,6 +4,7 @@ import banking.exception.*;
 import lombok.Getter;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -41,7 +42,7 @@ public class BankAccount implements BankOperations {
             this.balance += amount;
 
             transactionHistory.add(
-                    new Transaction(OffsetDateTime.now(),
+                    new Transaction(LocalDateTime.now(),
                             TransactionType.DEPOSIT,
                             amount,
                             this,
@@ -67,7 +68,7 @@ public class BankAccount implements BankOperations {
             this.spentToday += amount;
 
             transactionHistory.add(
-                    new Transaction(OffsetDateTime.now(),
+                    new Transaction(LocalDateTime.now(),
                             TransactionType.WITHDRAW,
                             amount,
                             this,
@@ -76,7 +77,7 @@ public class BankAccount implements BankOperations {
             );
 
             transactionHistory.add(
-                    new Transaction(OffsetDateTime.now(),
+                    new Transaction(LocalDateTime.now(),
                             TransactionType.FEE,
                             this.widtrawalFee.amount(),
                             this,
@@ -181,7 +182,7 @@ public class BankAccount implements BankOperations {
         }
 
         transactionHistory.add(
-                new Transaction(OffsetDateTime.now(),
+                new Transaction(LocalDateTime.now(),
                         TransactionType.TRANSFER,
                         amount,
                         this,

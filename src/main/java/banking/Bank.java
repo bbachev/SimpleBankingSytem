@@ -2,13 +2,10 @@ package banking;
 
 import banking.exception.AccountNotExistException;
 
-import javax.swing.plaf.nimbus.State;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Bank implements AccountManager {
     private final ConcurrentHashMap<UUID, BankAccount> accounts;
@@ -56,21 +53,21 @@ public class Bank implements AccountManager {
     public Statement generateStatement(UUID accountNumber, LocalDate fromDate, LocalDate toDate) {
         BankAccount account = this.findAccount(accountNumber);
         long startingBalance = account.getTransactionHistory().stream()
-                .filter(transaction -> transaction.timestamp().isBefore(fromDate))
+                .filter(transaction -> transaction.timestamp().toLocalDate().isBefore(fromDate))
                 .reduce((first, second) -> second)
                 .map(Transaction::resultingBalance)
                 .orElse(0L);
 
         long endingBalance = account.getTransactionHistory().stream()
-                .filter(transaction -> !transaction.timestamp().isAfter(toDate))
+                .filter(transaction -> !transaction.timestamp().toLocalDate().isAfter(toDate))
                 .reduce((first, second) -> second)
                 .map(Transaction::resultingBalance)
                 .orElse(0L);
 
         List<Transaction> transactions = account.getTransactionHistory().stream()
                 .filter(transaction ->
-                        !transaction.timestamp().isBefore(fromDate)
-                        && !transaction.timestamp().isAfter(toDate)
+                        !transaction.timestamp().toLocalDate().isBefore(fromDate)
+                        && !transaction.timestamp().toLocalDate().isAfter(toDate)
                 )
                 .toList();
         return new Statement(startingBalance, endingBalance, transactions);

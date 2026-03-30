@@ -4,6 +4,7 @@ import banking.exception.CouldNotAcquireLockException;
 import banking.exception.InvalidAmountException;
 import banking.exception.MaxBalanceException;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.concurrent.TimeUnit;
 
@@ -40,7 +41,7 @@ public class SavingAccount extends BankAccount{
             this.addToBalance(interest);
 
             getTransactionHistory().add(
-                            new Transaction(OffsetDateTime.now(),
+                            new Transaction(LocalDateTime.now(),
                                     TransactionType.INTEREST,
                                     interest,
                                     this,
