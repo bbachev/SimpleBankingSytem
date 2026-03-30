@@ -12,7 +12,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
 public class BankAccount implements BankOperations {
-    private final String owner;
+    private final User owner;
     private long balance = 0;
     protected long spentToday = 0;
     private LocalDate lastTrackedDate;
@@ -23,7 +23,7 @@ public class BankAccount implements BankOperations {
     private ReentrantLock reentrantLock = new ReentrantLock();
     private final List<Transaction> transactionHistory = new CopyOnWriteArrayList<>();
 
-    public BankAccount(String owner, long dailyLimit, Fee widtrawalFee) {
+    public BankAccount(User owner, long dailyLimit, Fee widtrawalFee) {
         this.owner = owner;
         this.dailyWithdrawalLimit = dailyLimit;
         this.widtrawalFee = widtrawalFee;
@@ -147,9 +147,9 @@ public class BankAccount implements BankOperations {
         long otherAccountBalance = 0;
 
         try {
-            firstLock = this.owner.compareTo(otherAccount.getOwner()) < 0
+            firstLock = this.owner.getId().compareTo(otherAccount.getOwner().getId()) < 0
                     ? this.reentrantLock : otherAccount.getLock();
-            secondLock = this.owner.compareTo(otherAccount.getOwner()) < 0
+            secondLock = this.owner.getId().compareTo(otherAccount.getOwner().getId()) < 0
                     ? otherAccount.getLock() : this.reentrantLock;
 
             isFirstLocked = firstLock.tryLock(5, TimeUnit.SECONDS);

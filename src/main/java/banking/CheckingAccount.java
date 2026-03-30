@@ -13,7 +13,7 @@ public class CheckingAccount extends BankAccount{
     private final Fee overdraftFee;
     private LocalDate lastNegativeBalance = LocalDate.MIN;;
 
-    public CheckingAccount(String owner, long dailyLimit, Fee withdrawFee, Fee overdraftFee) {
+    public CheckingAccount(User owner, long dailyLimit, Fee withdrawFee, Fee overdraftFee) {
         super(owner, dailyLimit, withdrawFee);
         this.overdraftLimit = dailyLimit;
         this.overdraftFee = overdraftFee;

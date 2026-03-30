@@ -12,7 +12,7 @@ public class SavingAccount extends BankAccount{
     private long maxBalance;
     private final CompoundingMode mode;
 
-    public SavingAccount(String owner, Double interestRate, long limit, CompoundingMode mode, Fee fee) {
+    public SavingAccount(User owner, Double interestRate, long limit, CompoundingMode mode, Fee fee) {
         super(owner, limit, fee);
         this.interestRate = interestRate;
         this.maxBalance = limit;

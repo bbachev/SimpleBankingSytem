@@ -1,9 +1,9 @@
 package banking;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDate;
 
 public record Transaction (
-        OffsetDateTime timestamp,
+        LocalDate timestamp,
         TransactionType type,
         long amount,
         BankAccount fromAccount,
