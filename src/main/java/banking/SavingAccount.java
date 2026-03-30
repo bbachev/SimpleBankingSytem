@@ -5,7 +5,6 @@ import banking.exception.InvalidAmountException;
 import banking.exception.MaxBalanceException;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.concurrent.TimeUnit;
 
 public class SavingAccount extends BankAccount{
@@ -29,7 +28,7 @@ public class SavingAccount extends BankAccount{
             isLocked = getLock().tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new CouldNotAcquireLockException();
 
-            long currentBalance = getBalance();
+            long currentBalance = this.balanceUnsafe();
 
             long interest = switch(mode) {
                 case CompoundingMode.YEARLY ->  (long) (currentBalance * interestRate);
@@ -46,7 +45,7 @@ public class SavingAccount extends BankAccount{
                                     interest,
                                     this,
                                     null,
-                                    this.getBalance())
+                                    this.balanceUnsafe())
 
             );
         } catch (InterruptedException e) {
@@ -66,9 +65,9 @@ public class SavingAccount extends BankAccount{
             isLocked = getLock().tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new CouldNotAcquireLockException();
 
-            long currentBalance = getBalance();
+            long currentBalance = this.balanceUnsafe();
             if (currentBalance + amount > this.maxBalance ) throw new MaxBalanceException();
-            super.deposit(amount);
+            this.depositUnsafe(amount);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {

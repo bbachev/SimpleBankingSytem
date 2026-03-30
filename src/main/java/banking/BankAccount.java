@@ -5,9 +5,8 @@ import lombok.Getter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -22,7 +21,7 @@ public class BankAccount implements BankOperations {
 
 
     private ReentrantLock reentrantLock = new ReentrantLock();
-    private final List<Transaction> transactionHistory = new CopyOnWriteArrayList<>();
+    private final List<Transaction> transactionHistory = new ArrayList<>();
 
     public BankAccount(User owner, long dailyLimit, Fee widtrawalFee) {
         this.owner = owner;
@@ -39,16 +38,7 @@ public class BankAccount implements BankOperations {
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new CouldNotAcquireLockException();
-            this.balance += amount;
-
-            transactionHistory.add(
-                    new Transaction(LocalDateTime.now(),
-                            TransactionType.DEPOSIT,
-                            amount,
-                            this,
-                            null,
-                            this.getBalance())
-            );
+            this.depositUnsafe(amount);
 
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -58,11 +48,6 @@ public class BankAccount implements BankOperations {
     }
 
     protected void doWithdraw(long amount, long additionalFee) {
-        boolean isLocked = false;
-        try {
-            isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new CouldNotAcquireLockException();
-
             long total = amount + this.widtrawalFee.amount() + additionalFee;
             this.balance -= total;
             this.spentToday += amount;
@@ -73,7 +58,7 @@ public class BankAccount implements BankOperations {
                             amount,
                             this,
                             null,
-                            this.getBalance())
+                            this.balance)
             );
 
             transactionHistory.add(
@@ -82,15 +67,9 @@ public class BankAccount implements BankOperations {
                             this.widtrawalFee.amount(),
                             this,
                             null,
-                            this.getBalance()
+                            this.balance
                     )
             );
-
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }  finally {
-            if (isLocked) reentrantLock.unlock();
-        }
     }
         @Override
     public void withdraw(long amount) {
@@ -101,10 +80,10 @@ public class BankAccount implements BankOperations {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new CouldNotAcquireLockException();
 
-            if (this.getBalance() < amount) throw new InsufficientFundsException();
+            if (this.balance < amount) throw new InsufficientFundsException();
 
             resetDailyLimitIfNeeded();
-            long spentToday = this.getSpentToday();
+            long spentToday = this.spentToday;
 
             if (spentToday > dailyWithdrawalLimit || spentToday + amount > dailyWithdrawalLimit)
                 throw new WithdrawLimitExceededException();
@@ -159,8 +138,8 @@ public class BankAccount implements BankOperations {
             if (!isFirstLocked || !isSecondLocked)
                 throw new CouldNotAcquireLockException();
 
-            currentBalance = this.getBalance();
-            otherAccountBalance = otherAccount.getBalance();
+            currentBalance = this.balance;
+            otherAccountBalance = otherAccount.balance;
 
             this.withdraw(amount);
             otherAccount.deposit(amount);
@@ -169,10 +148,10 @@ public class BankAccount implements BankOperations {
             throw new RuntimeException();
         } catch (Exception e) {
             if (this.getBalance() != currentBalance) {
-                this.deposit(amount);
+                this.balance = currentBalance;
             }
             if (otherAccount.getBalance() != otherAccountBalance) {
-                otherAccount.withdraw(amount);
+               otherAccount.balance = otherAccountBalance;
             }
             throw new RuntimeException(e);
 
@@ -187,7 +166,7 @@ public class BankAccount implements BankOperations {
                         amount,
                         this,
                         otherAccount,
-                        this.getBalance())
+                        balance)
         );
     }
 
@@ -218,5 +197,19 @@ public class BankAccount implements BankOperations {
     }
     protected void addToBalance(long amount) {
         this.balance += amount;
+    }
+    protected long balanceUnsafe() {
+        return this.balance;
+    }
+    protected void depositUnsafe(long amount) {
+        this.balance += amount;
+        transactionHistory.add(
+                new Transaction(LocalDateTime.now(),
+                        TransactionType.DEPOSIT,
+                        amount,
+                        this,
+                        null,
+                        this.balance)
+        );
     }
 }

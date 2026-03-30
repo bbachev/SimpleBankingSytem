@@ -1,11 +1,13 @@
 package banking;
 
 import banking.exception.AccountNotExistException;
+import banking.exception.CouldNotAcquireLockException;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class Bank implements AccountManager {
     private final ConcurrentHashMap<UUID, BankAccount> accounts;
@@ -20,9 +22,9 @@ public class Bank implements AccountManager {
         UUID id = UUID.randomUUID();
 
         BankAccount bankAccount = switch (type) {
-            case AccountType.REGULAR -> new BankAccount(owner, dailyLimit, withdrawFee);
-            case AccountType.SAVING -> new SavingAccount(owner, interestRate, dailyLimit, mode, withdrawFee);
-            case AccountType.CHECKING -> new CheckingAccount(owner, dailyLimit, withdrawFee, overdraftFee);
+            case REGULAR -> new BankAccount(owner, dailyLimit, withdrawFee);
+            case SAVING -> new SavingAccount(owner, interestRate, dailyLimit, mode, withdrawFee);
+            case CHECKING -> new CheckingAccount(owner, dailyLimit, withdrawFee, overdraftFee);
         };
         this.accounts.putIfAbsent(id, bankAccount);
         owner.getAccounts().add(bankAccount);
@@ -31,8 +33,8 @@ public class Bank implements AccountManager {
 
     @Override
     public void closeAccount(UUID accountNumber) throws AccountNotExistException {
-        BankAccount account = this.findAccount(accountNumber);
-        this.accounts.remove(accountNumber);
+        BankAccount account = this.accounts.remove(accountNumber);
+        if (account == null) throw new AccountNotExistException();
         account.getOwner().getAccounts().remove(account);
 
     }
@@ -51,25 +53,36 @@ public class Bank implements AccountManager {
 
     @Override
     public Statement generateStatement(UUID accountNumber, LocalDate fromDate, LocalDate toDate) {
+        boolean isLocked = false;
         BankAccount account = this.findAccount(accountNumber);
-        long startingBalance = account.getTransactionHistory().stream()
-                .filter(transaction -> transaction.timestamp().toLocalDate().isBefore(fromDate))
-                .reduce((first, second) -> second)
-                .map(Transaction::resultingBalance)
-                .orElse(0L);
+        try {
+            isLocked = account.getLock().tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new CouldNotAcquireLockException();
 
-        long endingBalance = account.getTransactionHistory().stream()
-                .filter(transaction -> !transaction.timestamp().toLocalDate().isAfter(toDate))
-                .reduce((first, second) -> second)
-                .map(Transaction::resultingBalance)
-                .orElse(0L);
+            long startingBalance = account.getTransactionHistory().stream()
+                    .filter(transaction -> transaction.timestamp().toLocalDate().isBefore(fromDate))
+                    .reduce((first, second) -> second)
+                    .map(Transaction::resultingBalance)
+                    .orElse(0L);
 
-        List<Transaction> transactions = account.getTransactionHistory().stream()
-                .filter(transaction ->
-                        !transaction.timestamp().toLocalDate().isBefore(fromDate)
-                        && !transaction.timestamp().toLocalDate().isAfter(toDate)
-                )
-                .toList();
-        return new Statement(startingBalance, endingBalance, transactions);
+            long endingBalance = account.getTransactionHistory().stream()
+                    .filter(transaction -> !transaction.timestamp().toLocalDate().isAfter(toDate))
+                    .reduce((first, second) -> second)
+                    .map(Transaction::resultingBalance)
+                    .orElse(0L);
+
+            List<Transaction> transactions = account.getTransactionHistory().stream()
+                    .filter(transaction ->
+                            !transaction.timestamp().toLocalDate().isBefore(fromDate)
+                                    && !transaction.timestamp().toLocalDate().isAfter(toDate)
+                    )
+                    .toList();
+            return new Statement(startingBalance, endingBalance, transactions);
+
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (isLocked) account.getLock().unlock();
+        }
     }
 }

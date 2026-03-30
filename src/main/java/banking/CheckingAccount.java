@@ -6,7 +6,6 @@ import banking.exception.OverdraftLimitExceededException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
 import java.util.concurrent.TimeUnit;
 
 public class CheckingAccount extends BankAccount{
@@ -28,9 +27,9 @@ public class CheckingAccount extends BankAccount{
             if (!isLocked) throw new CouldNotAcquireLockException();
 
             resetDailyLimitIfNeeded();
-            if (this.getBalance() - amount < -overdraftLimit) throw new OverdraftLimitExceededException();
+            if (this.balanceUnsafe() - amount < -overdraftLimit) throw new OverdraftLimitExceededException();
 
-            if (getSpentToday() + amount > getDailyWithdrawalLimit())
+            if (this.spentToday + amount > getDailyWithdrawalLimit())
                 throw new DailyWithdrawalLimitException();
 
             long withdrawalFee = checkForWithdrawalFee() ? this.overdraftFee.amount(): 0;
@@ -43,7 +42,7 @@ public class CheckingAccount extends BankAccount{
                                 this.overdraftFee.amount(),
                                 this,
                                 null,
-                                this.getBalance()
+                                this.balanceUnsafe()
                         )
                 );
             }
