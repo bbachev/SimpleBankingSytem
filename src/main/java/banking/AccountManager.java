@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface AccountManager {
     BankAccount openAccount(User owner, AccountType type, Double interest, long dailyLimit,
-                            CompoundingMode mode, Fee fee, Fee overdraftFee);
+                            long overdraftLimit, CompoundingMode mode, Fee fee, Fee overdraftFee);
     void closeAccount(UUID accountNumber) throws AccountNotExistException;
     BankAccount findAccount(UUID accountNumber) throws AccountNotExistException;
     List<BankAccount> listAccounts();

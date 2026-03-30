@@ -18,13 +18,13 @@ public class Bank implements AccountManager {
 
     @Override
     public BankAccount openAccount(User owner, AccountType type, Double interestRate, long dailyLimit,
-                                   CompoundingMode mode, Fee withdrawFee, Fee overdraftFee) {
+                                   long overdraftLimit, CompoundingMode mode, Fee withdrawFee, Fee overdraftFee) {
         UUID id = UUID.randomUUID();
 
         BankAccount bankAccount = switch (type) {
             case REGULAR -> new BankAccount(owner, dailyLimit, withdrawFee);
             case SAVING -> new SavingAccount(owner, interestRate, dailyLimit, mode, withdrawFee);
-            case CHECKING -> new CheckingAccount(owner, dailyLimit, withdrawFee, overdraftFee);
+            case CHECKING -> new CheckingAccount(owner, dailyLimit, overdraftLimit, withdrawFee, overdraftFee);
         };
         this.accounts.putIfAbsent(id, bankAccount);
         owner.getAccounts().add(bankAccount);

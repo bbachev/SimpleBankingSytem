@@ -31,8 +31,8 @@ public class SavingAccount extends BankAccount{
             long currentBalance = this.balanceUnsafe();
 
             long interest = switch(mode) {
-                case CompoundingMode.YEARLY ->  (long) (currentBalance * interestRate);
-                case CompoundingMode.MONTHLY -> (long) (currentBalance * (interestRate / 12));
+                case CompoundingMode.YEARLY ->  (long) (currentBalance * interestRate) / 10000;
+                case CompoundingMode.MONTHLY -> (long) (currentBalance * interestRate) / 10000 / 12;
             };
             
             if (currentBalance + interest > maxBalance) throw new MaxBalanceException();
