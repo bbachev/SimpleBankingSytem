@@ -16,12 +16,16 @@ public class BankAccount implements BankOperations {
     protected long spentToday = 0;
     private LocalDate lastTrackedDate;
     private final long dailyWithdrawalLimit;
+    private final Fee widtrawalFee;
+
+
     private ReentrantLock reentrantLock = new ReentrantLock();
     private final List<Transaction> transactionHistory = new CopyOnWriteArrayList<>();
 
-    public BankAccount(String owner, long dailyLimit) {
+    public BankAccount(String owner, long dailyLimit, Fee widtrawalFee) {
         this.owner = owner;
         this.dailyWithdrawalLimit = dailyLimit;
+        this.widtrawalFee = widtrawalFee;
         this.lastTrackedDate = LocalDate.now();
     }
 
@@ -34,22 +38,59 @@ public class BankAccount implements BankOperations {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new RuntimeException("Could not acquire lock");
             this.balance += amount;
+
+            transactionHistory.add(
+                    new Transaction(OffsetDateTime.now(),
+                            TransactionType.DEPOSIT,
+                            amount,
+                            this,
+                            null,
+                            this.getBalance())
+            );
+
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             if (isLocked) reentrantLock.unlock();
         }
-        transactionHistory.add(
-                new Transaction(OffsetDateTime.now(),
-                        TransactionType.DEPOSIT,
-                        amount,
-                        this,
-                        null,
-                        this.balance)
-        );
     }
 
-    @Override
+    protected void doWithdraw(long amount) {
+        boolean isLocked = false;
+        try {
+            isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+
+            long total = amount + this.widtrawalFee.amount();
+            this.balance -= total;
+            this.spentToday += amount;
+
+            transactionHistory.add(
+                    new Transaction(OffsetDateTime.now(),
+                            TransactionType.WITHDRAW,
+                            amount,
+                            this,
+                            null,
+                            this.getBalance())
+            );
+
+            transactionHistory.add(
+                    new Transaction(OffsetDateTime.now(),
+                            TransactionType.FEE,
+                            this.widtrawalFee.amount(),
+                            this,
+                            null,
+                            this.getBalance()
+                    )
+            );
+
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }  finally {
+            if (isLocked) reentrantLock.unlock();
+        }
+    }
+        @Override
     public void withdraw(long amount) {
         if (amount < 0) throw new IllegalArgumentException("Amount cannot be negative");
 
@@ -66,21 +107,13 @@ public class BankAccount implements BankOperations {
             if (spentToday > dailyWithdrawalLimit || spentToday + amount > dailyWithdrawalLimit)
                 throw new IllegalArgumentException("Withdraw Limit exceeded");
 
-            this.spentToday += amount;
-            this.balance -= amount;
+            doWithdraw(amount);
+
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             if (isLocked) reentrantLock.unlock();
         }
-        transactionHistory.add(
-                new Transaction(OffsetDateTime.now(),
-                        TransactionType.WITHDRAW,
-                        amount,
-                        this,
-                        null,
-                        this.balance)
-        );
     }
 
     @Override
@@ -152,7 +185,7 @@ public class BankAccount implements BankOperations {
                         amount,
                         this,
                         otherAccount,
-                        this.balance)
+                        this.getBalance())
         );
     }
 

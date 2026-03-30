@@ -6,11 +6,13 @@ import java.util.concurrent.TimeUnit;
 public class SavingAccount extends BankAccount{
     private final Double interestRate;
     private long maxBalance;
+    private final CompoundingMode mode;
 
-    public SavingAccount(String owner, Double interestRate, long limit) {
-        super(owner, limit);
+    public SavingAccount(String owner, Double interestRate, long limit, CompoundingMode mode, Fee fee) {
+        super(owner, limit, fee);
         this.interestRate = interestRate;
         this.maxBalance = limit;
+        this.mode = mode;
     }
 
 
@@ -22,7 +24,11 @@ public class SavingAccount extends BankAccount{
 
             long currentBalance = getBalance();
 
-            long interest = (long) (currentBalance * interestRate);
+            long interest = switch(mode) {
+                case CompoundingMode.YEARLY ->  (long) (currentBalance * interestRate);
+                case CompoundingMode.MONTHLY -> (long) (currentBalance * (interestRate) / 12);
+            };
+            
             if (getSpentToday() + interest > maxBalance) throw new IllegalArgumentException("Max balance could not be exceed");
 
             balance += interest;
