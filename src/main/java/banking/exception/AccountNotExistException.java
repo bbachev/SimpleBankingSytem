@@ -1,8 +1,8 @@
 package banking.exception;
 
-public class AccountNotExistException extends Exception{
+public class AccountNotExistException extends RuntimeException {
 
     public AccountNotExistException() {
-        super("Account doesn't exist");
+        super("Unknown or closed account");
     }
 }

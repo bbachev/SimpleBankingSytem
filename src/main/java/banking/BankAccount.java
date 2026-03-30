@@ -1,5 +1,6 @@
 package banking;
 
+import banking.exception.*;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -12,7 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 @Getter
 public class BankAccount implements BankOperations {
     private final String owner;
-    protected long balance = 0;
+    private long balance = 0;
     protected long spentToday = 0;
     private LocalDate lastTrackedDate;
     private final long dailyWithdrawalLimit;
@@ -33,10 +34,10 @@ public class BankAccount implements BankOperations {
     public void deposit(long amount) {
         boolean isLocked = false;
 
-        if (amount < 0) throw new IllegalArgumentException("Amount cannot be negative");
+        if (amount <= 0) throw new InvalidAmountException();
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
             this.balance += amount;
 
             transactionHistory.add(
@@ -55,13 +56,13 @@ public class BankAccount implements BankOperations {
         }
     }
 
-    protected void doWithdraw(long amount) {
+    protected void doWithdraw(long amount, long additionalFee) {
         boolean isLocked = false;
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
 
-            long total = amount + this.widtrawalFee.amount();
+            long total = amount + this.widtrawalFee.amount() + additionalFee;
             this.balance -= total;
             this.spentToday += amount;
 
@@ -92,22 +93,22 @@ public class BankAccount implements BankOperations {
     }
         @Override
     public void withdraw(long amount) {
-        if (amount < 0) throw new IllegalArgumentException("Amount cannot be negative");
+        if (amount < 0) throw new InvalidAmountException();
 
         boolean isLocked = false;
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
 
-            if (this.getBalance() < amount) throw new IllegalArgumentException("Not enough balance");
+            if (this.getBalance() < amount) throw new InsufficientFundsException();
 
             resetDailyLimitIfNeeded();
             long spentToday = this.getSpentToday();
 
             if (spentToday > dailyWithdrawalLimit || spentToday + amount > dailyWithdrawalLimit)
-                throw new IllegalArgumentException("Withdraw Limit exceeded");
+                throw new WithdrawLimitExceededException();
 
-            doWithdraw(amount);
+            doWithdraw(amount, 0);
 
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -122,7 +123,7 @@ public class BankAccount implements BankOperations {
 
         try {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
             return this.balance;
 
         } catch (InterruptedException e) {
@@ -134,7 +135,7 @@ public class BankAccount implements BankOperations {
 
     @Override
     public void transferTo(BankAccount otherAccount, long amount) {
-        if (otherAccount == null) throw new IllegalArgumentException("Other account cannot be null");
+        if (otherAccount == null) throw new AccountNotExistException();
 
         boolean isFirstLocked = false;
         boolean isSecondLocked = false;
@@ -155,7 +156,7 @@ public class BankAccount implements BankOperations {
             isSecondLocked = secondLock.tryLock(5, TimeUnit.SECONDS);
 
             if (!isFirstLocked || !isSecondLocked)
-                throw new IllegalArgumentException("One of the lock cannot be acquired");
+                throw new CouldNotAcquireLockException();
 
             currentBalance = this.getBalance();
             otherAccountBalance = otherAccount.getBalance();
@@ -199,7 +200,7 @@ public class BankAccount implements BankOperations {
 
         try {
             isLocked = this.reentrantLock.tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
 
             return this.spentToday;
         } catch (InterruptedException e) {
@@ -213,5 +214,8 @@ public class BankAccount implements BankOperations {
             lastTrackedDate = LocalDate.now();
             this.spentToday = 0;
         }
+    }
+    protected void addToBalance(long amount) {
+        this.balance += amount;
     }
 }

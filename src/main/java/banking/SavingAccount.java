@@ -1,5 +1,9 @@
 package banking;
 
+import banking.exception.CouldNotAcquireLockException;
+import banking.exception.InvalidAmountException;
+import banking.exception.MaxBalanceException;
+
 import java.time.OffsetDateTime;
 import java.util.concurrent.TimeUnit;
 
@@ -16,22 +20,24 @@ public class SavingAccount extends BankAccount{
     }
 
 
-    public void applyInterest(){
+    public void applyInterest() {
         boolean isLocked = false;
+        if (this.interestRate <= 0) throw new InvalidAmountException();
+
         try {
             isLocked = getLock().tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
 
             long currentBalance = getBalance();
 
             long interest = switch(mode) {
                 case CompoundingMode.YEARLY ->  (long) (currentBalance * interestRate);
-                case CompoundingMode.MONTHLY -> (long) (currentBalance * (interestRate) / 12);
+                case CompoundingMode.MONTHLY -> (long) (currentBalance * (interestRate / 12));
             };
             
-            if (getSpentToday() + interest > maxBalance) throw new IllegalArgumentException("Max balance could not be exceed");
+            if (currentBalance + interest > maxBalance) throw new MaxBalanceException();
 
-            balance += interest;
+            this.addToBalance(interest);
 
             getTransactionHistory().add(
                             new Transaction(OffsetDateTime.now(),
@@ -41,7 +47,7 @@ public class SavingAccount extends BankAccount{
                                     null,
                                     this.getBalance())
 
-        );
+            );
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -57,10 +63,10 @@ public class SavingAccount extends BankAccount{
 
         try{
             isLocked = getLock().tryLock(5, TimeUnit.SECONDS);
-            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+            if (!isLocked) throw new CouldNotAcquireLockException();
 
             long currentBalance = getBalance();
-            if (currentBalance + amount > this.maxBalance ) throw new IllegalArgumentException("Max balance exceeded");
+            if (currentBalance + amount > this.maxBalance ) throw new MaxBalanceException();
             super.deposit(amount);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
