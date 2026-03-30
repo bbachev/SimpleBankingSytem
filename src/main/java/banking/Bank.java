@@ -14,12 +14,13 @@ public class Bank implements AccountManager {
     }
 
     @Override
-    public BankAccount openAccount(String owner, AccountType type, Double interestRate) {
+    public BankAccount openAccount(String owner, AccountType type, Double interestRate, long dailyLimit) {
         UUID id = UUID.randomUUID();
 
         BankAccount bankAccount = switch (type) {
-            case AccountType.REGULAR -> new BankAccount(owner);
-            case AccountType.SAVING -> new SavingAccount(owner, interestRate);
+            case AccountType.REGULAR -> new BankAccount(owner, dailyLimit);
+            case AccountType.SAVING -> new SavingAccount(owner, interestRate, dailyLimit);
+            case AccountType.CHECKING -> new CheckingAccount(owner, dailyLimit);
         };
         this.accounts.putIfAbsent(id, bankAccount);
 

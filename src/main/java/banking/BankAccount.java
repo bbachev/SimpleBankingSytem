@@ -2,6 +2,7 @@ package banking;
 
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -12,11 +13,16 @@ import java.util.concurrent.locks.ReentrantLock;
 public class BankAccount implements BankOperations {
     private final String owner;
     protected long balance = 0;
-    private ReentrantLock reentrantLock;
+    protected long spentToday = 0;
+    private LocalDate lastTrackedDate;
+    private final long dailyWithdrawalLimit;
+    private ReentrantLock reentrantLock = new ReentrantLock();
     private final List<Transaction> transactionHistory = new CopyOnWriteArrayList<>();
 
-    public BankAccount(String owner) {
+    public BankAccount(String owner, long dailyLimit) {
         this.owner = owner;
+        this.dailyWithdrawalLimit = dailyLimit;
+        this.lastTrackedDate = LocalDate.now();
     }
 
     @Override
@@ -45,7 +51,6 @@ public class BankAccount implements BankOperations {
 
     @Override
     public void withdraw(long amount) {
-        if (this.getBalance() < amount) throw new IllegalArgumentException("Not enough balance");
         if (amount < 0) throw new IllegalArgumentException("Amount cannot be negative");
 
         boolean isLocked = false;
@@ -53,6 +58,15 @@ public class BankAccount implements BankOperations {
             isLocked = reentrantLock.tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new RuntimeException("Could not acquire lock");
 
+            if (this.getBalance() < amount) throw new IllegalArgumentException("Not enough balance");
+
+            resetDailyLimitIfNeeded();
+            long spentToday = this.getSpentToday();
+
+            if (spentToday > dailyWithdrawalLimit || spentToday + amount > dailyWithdrawalLimit)
+                throw new IllegalArgumentException("Withdraw Limit exceeded");
+
+            this.spentToday += amount;
             this.balance -= amount;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -134,7 +148,7 @@ public class BankAccount implements BankOperations {
 
         transactionHistory.add(
                 new Transaction(OffsetDateTime.now(),
-                        TransactionType.DEPOSIT,
+                        TransactionType.TRANSFER,
                         amount,
                         this,
                         otherAccount,
@@ -144,5 +158,27 @@ public class BankAccount implements BankOperations {
 
     public ReentrantLock getLock() {
         return reentrantLock;
+    }
+
+    public long getSpentToday(){
+
+        boolean isLocked = false;
+
+        try {
+            isLocked = this.reentrantLock.tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+
+            return this.spentToday;
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            if (isLocked) this.reentrantLock.unlock();
+        }
+    }
+    protected void resetDailyLimitIfNeeded() {
+        if (!this.lastTrackedDate.isEqual(LocalDate.now())) {
+            lastTrackedDate = LocalDate.now();
+            this.spentToday = 0;
+        }
     }
 }

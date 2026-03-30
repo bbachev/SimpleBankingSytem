@@ -5,10 +5,12 @@ import java.util.concurrent.TimeUnit;
 
 public class SavingAccount extends BankAccount{
     private final Double interestRate;
+    private long maxBalance;
 
-    public SavingAccount(String owner, Double interestRate) {
-        super(owner);
+    public SavingAccount(String owner, Double interestRate, long limit) {
+        super(owner, limit);
         this.interestRate = interestRate;
+        this.maxBalance = limit;
     }
 
 
@@ -18,7 +20,11 @@ public class SavingAccount extends BankAccount{
             isLocked = getLock().tryLock(5, TimeUnit.SECONDS);
             if (!isLocked) throw new RuntimeException("Could not acquire lock");
 
-            long interest = (long) (getBalance() * interestRate);
+            long currentBalance = getBalance();
+
+            long interest = (long) (currentBalance * interestRate);
+            if (getSpentToday() + interest > maxBalance) throw new IllegalArgumentException("Max balance could not be exceed");
+
             balance += interest;
 
             getTransactionHistory().add(
@@ -34,6 +40,25 @@ public class SavingAccount extends BankAccount{
             throw new RuntimeException(e);
         }
         finally {
+            if (isLocked) getLock().unlock();
+        }
+
+    }
+
+    @Override
+    public void deposit(long amount) {
+        boolean isLocked = false;
+
+        try{
+            isLocked = getLock().tryLock(5, TimeUnit.SECONDS);
+            if (!isLocked) throw new RuntimeException("Could not acquire lock");
+
+            long currentBalance = getBalance();
+            if (currentBalance + amount > this.maxBalance ) throw new IllegalArgumentException("Max balance exceeded");
+            super.deposit(amount);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
             if (isLocked) getLock().unlock();
         }
 
