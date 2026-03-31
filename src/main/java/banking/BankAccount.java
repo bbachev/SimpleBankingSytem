@@ -141,19 +141,21 @@ public class BankAccount implements BankOperations {
             currentBalance = this.balance;
             otherAccountBalance = otherAccount.balance;
 
-            this.withdraw(amount);
-            otherAccount.deposit(amount);
+            if (currentBalance < amount) throw new InsufficientFundsException();
+
+            this.doWithdraw(amount, 0);
+            otherAccount.depositUnsafe(amount);
 
         } catch (InterruptedException e) {
             throw new RuntimeException();
         } catch (Exception e) {
-            if (this.getBalance() != currentBalance) {
+            if (this.balanceUnsafe() != currentBalance) {
                 this.balance = currentBalance;
             }
-            if (otherAccount.getBalance() != otherAccountBalance) {
+            if (otherAccount.balanceUnsafe() != otherAccountBalance) {
                otherAccount.balance = otherAccountBalance;
             }
-            throw new RuntimeException(e);
+            throw e;
 
         } finally {
             if (isFirstLocked) firstLock.unlock();
@@ -211,5 +213,8 @@ public class BankAccount implements BankOperations {
                         null,
                         this.balance)
         );
+    }
+    protected void setLastTrackedDate(LocalDate date) {
+        this.lastTrackedDate = date;
     }
 }

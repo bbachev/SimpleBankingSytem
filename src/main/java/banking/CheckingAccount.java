@@ -55,7 +55,7 @@ public class CheckingAccount extends BankAccount{
         }
     }
     private boolean checkForWithdrawalFee(){
-        if (getBalance() < 0 && !lastNegativeBalance.isEqual(LocalDate.now())){
+        if (balanceUnsafe() < 0 && !lastNegativeBalance.isEqual(LocalDate.now())){
             lastNegativeBalance = LocalDate.now();
             return true;
         }
