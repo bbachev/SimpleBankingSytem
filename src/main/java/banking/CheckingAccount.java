@@ -32,7 +32,7 @@ public class CheckingAccount extends BankAccount{
             if (this.spentToday + amount > getDailyWithdrawalLimit())
                 throw new DailyWithdrawalLimitException();
 
-            long withdrawalFee = checkForWithdrawalFee() ? this.overdraftFee.amount(): 0;
+            long withdrawalFee = checkForWithdrawalFee(amount) ? this.overdraftFee.amount(): 0;
             doWithdraw(amount, withdrawalFee);
 
             if (withdrawalFee > 0) {
@@ -54,8 +54,8 @@ public class CheckingAccount extends BankAccount{
             if (isLocked) getLock().unlock();
         }
     }
-    private boolean checkForWithdrawalFee(){
-        if (balanceUnsafe() < 0 && !lastNegativeBalance.isEqual(LocalDate.now())){
+    private boolean checkForWithdrawalFee(long amount){
+        if (this.balanceUnsafe() - amount < 0 && !lastNegativeBalance.isEqual(LocalDate.now())) {
             lastNegativeBalance = LocalDate.now();
             return true;
         }
