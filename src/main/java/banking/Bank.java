@@ -10,24 +10,22 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 public class Bank implements AccountManager {
-    private final ConcurrentHashMap<UUID, BankAccount> accounts;
+    private  ConcurrentHashMap<UUID, BankAccount> accounts = new ConcurrentHashMap<>();
 
-    public Bank(ConcurrentHashMap<UUID, BankAccount> accounts) {
-        this.accounts = accounts;
+    public Bank() {
+
     }
 
     @Override
     public BankAccount openAccount(User owner, AccountType type, Double interestRate, long dailyLimit,
                                    long overdraftLimit, CompoundingMode mode, Fee withdrawFee, Fee overdraftFee) {
-        UUID id = UUID.randomUUID();
-
         BankAccount bankAccount = switch (type) {
             case REGULAR -> new BankAccount(owner, dailyLimit, withdrawFee);
             case SAVING -> new SavingAccount(owner, interestRate, dailyLimit, mode, withdrawFee);
             case CHECKING -> new CheckingAccount(owner, dailyLimit, overdraftLimit, withdrawFee, overdraftFee);
         };
-        this.accounts.putIfAbsent(id, bankAccount);
-        owner.getAccounts().add(bankAccount);
+        this.accounts.putIfAbsent(bankAccount.getId(), bankAccount);
+        owner.addAccount(bankAccount);
         return bankAccount;
     }
 
@@ -35,7 +33,7 @@ public class Bank implements AccountManager {
     public void closeAccount(UUID accountNumber) throws AccountNotExistException {
         BankAccount account = this.accounts.remove(accountNumber);
         if (account == null) throw new AccountNotExistException();
-        account.getOwner().getAccounts().remove(account);
+        account.getOwner().removeAccount(account);
 
     }
 

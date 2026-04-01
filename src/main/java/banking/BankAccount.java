@@ -7,11 +7,13 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Getter
 public class BankAccount implements BankOperations {
+    private final UUID id = UUID.randomUUID();
     private final User owner;
     private long balance = 0;
     protected long spentToday = 0;
@@ -216,5 +218,8 @@ public class BankAccount implements BankOperations {
     }
     protected void setLastTrackedDate(LocalDate date) {
         this.lastTrackedDate = date;
+    }
+    protected void addTransaction(Transaction transaction) {
+        this.transactionHistory.add(transaction);
     }
 }
